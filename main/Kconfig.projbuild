@@ -2,7 +2,8 @@ menu "Xiaozhi Assistant"
 
 config OTA_URL
     string "Default OTA URL"
-    default "https://esp.lxdata.vn/xiaozhi/ota/"
+    # default "https://esp.lxdata.vn/xiaozhi/ota/"
+    default "https://api.tenclass.net/xiaozhi/ota/"
     help
         The application will access this URL to check for new firmwares and server address.
 
@@ -106,6 +107,12 @@ choice BOARD_TYPE
     config BOARD_TYPE_XMINI_C3_V3
         bool "Xmini C3 V3"
         depends on IDF_TARGET_ESP32C3
+    config BOARD_TYPE_LXDATA_C3_V1
+        bool "Lxdata C3 V1"
+        depends on IDF_TARGET_ESP32C3
+    config BOARD_TYPE_LXDATA_S3_V1
+        bool "Lxdata S3 V1"
+        depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_XMINI_C3_4G
         bool "Xmini C3 4G"
         depends on IDF_TARGET_ESP32C3
@@ -391,7 +398,7 @@ choice ESP_S3_LCD_EV_Board_Version_TYPE
 endchoice
 
 choice DISPLAY_OLED_TYPE
-    depends on BOARD_TYPE_BREAD_COMPACT_WIFI || BOARD_TYPE_BREAD_COMPACT_ML307 || BOARD_TYPE_BREAD_COMPACT_ESP32
+    depends on BOARD_TYPE_BREAD_COMPACT_WIFI || BOARD_TYPE_BREAD_COMPACT_ML307 || BOARD_TYPE_BREAD_COMPACT_ESP32 || BOARD_TYPE_LXDATA_S3_V1
     prompt "OLED Type"
     default OLED_SSD1306_128X32
     help
