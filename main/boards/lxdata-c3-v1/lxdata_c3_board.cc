@@ -85,11 +85,10 @@ private:
 
     void InitializeDisplayI2c()
     {
-        // Initialize separate I2C bus for display
-        i2c_master_bus_config_t display_i2c_bus_cfg = {
-            .i2c_port = -1, // Để ESP-IDF tự động chọn port available
-            .sda_io_num = DISPLAY_I2C_SDA_PIN,
-            .scl_io_num = DISPLAY_I2C_SCL_PIN,
+        i2c_master_bus_config_t bus_config = {
+            .i2c_port = (i2c_port_t)0,
+            .sda_io_num = DISPLAY_SDA_PIN,
+            .scl_io_num = DISPLAY_SCL_PIN,
             .clk_source = I2C_CLK_SRC_DEFAULT,
             .glitch_ignore_cnt = 7,
             .intr_priority = 0,
@@ -98,8 +97,7 @@ private:
                 .enable_internal_pullup = 1,
             },
         };
-        ESP_ERROR_CHECK(i2c_new_master_bus(&display_i2c_bus_cfg, &display_i2c_bus_));
-        ESP_LOGI(TAG, "Display I2C bus initialized on SDA=%d, SCL=%d", DISPLAY_I2C_SDA_PIN, DISPLAY_I2C_SCL_PIN);
+        ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &display_i2c_bus_));
     }
 
     void InitializeSsd1306Display()
