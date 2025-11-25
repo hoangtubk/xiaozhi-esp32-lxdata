@@ -17,6 +17,10 @@
 
 #define TAG "LcdDisplay"
 
+#define FFT_SIZE 512
+static int current_heights[40] = {0};
+static float avg_power_spectrum[FFT_SIZE/2]={-25.0f};
+
 LV_FONT_DECLARE(BUILTIN_TEXT_FONT);
 LV_FONT_DECLARE(BUILTIN_ICON_FONT);
 LV_FONT_DECLARE(font_awesome_30_4);
@@ -291,6 +295,22 @@ MipiLcdDisplay::MipiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel
 LcdDisplay::~LcdDisplay() {
     SetPreviewImage(nullptr);
     
+    if (fft_task_handle != nullptr) {
+        ESP_LOGI(TAG, "Stopping FFT task in destructor");
+        fft_task_should_stop = true;
+        
+        int wait_count = 0;
+        while (fft_task_handle != nullptr && wait_count < 100) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            wait_count++;
+        }
+        
+        if (fft_task_handle != nullptr) {
+            vTaskDelete(fft_task_handle);
+            fft_task_handle = nullptr;
+        }
+    }
+
     // Clean up GIF controller
     if (gif_controller_) {
         gif_controller_->Stop();
@@ -1193,4 +1213,56 @@ void LcdDisplay::SetHideSubtitle(bool hide) {
             lv_obj_remove_flag(bottom_bar_, LV_OBJ_FLAG_HIDDEN);
         }
     }
+}
+
+
+void LcdDisplay::stopFft() {
+    ESP_LOGI(TAG, "Stopping FFT display");
+    
+    if (fft_task_handle != nullptr) {
+        ESP_LOGI(TAG, "Stopping FFT display task");
+        fft_task_should_stop = true;  
+        
+        int wait_count = 0;
+        while (fft_task_handle != nullptr && wait_count < 100) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            wait_count++;
+        }
+        
+        if (fft_task_handle != nullptr) {
+            ESP_LOGW(TAG, "FFT task did not stop gracefully, force deleting");
+            vTaskDelete(fft_task_handle);
+            fft_task_handle = nullptr;
+        } else {
+            ESP_LOGI(TAG, "FFT display task stopped successfully");
+        }
+    }
+    
+    DisplayLockGuard lock(this);
+    
+    fft_data_ready = false;
+    audio_display_last_update = 0;
+    
+    memset(current_heights, 0, sizeof(current_heights));
+    
+    for (int i = 0; i < FFT_SIZE/2; i++) {
+        avg_power_spectrum[i] = -25.0f;
+    }
+    
+    if (canvas_ != nullptr) {
+        lv_obj_del(canvas_);
+        canvas_ = nullptr;
+        ESP_LOGI(TAG, "FFT canvas deleted");
+    }
+    
+    if (canvas_buffer_ != nullptr) {
+        heap_caps_free(canvas_buffer_);
+        canvas_buffer_ = nullptr;
+        ESP_LOGI(TAG, "FFT canvas buffer freed");
+    }
+    
+    canvas_width_ = 0;
+    canvas_height_ = 0;
+    
+    ESP_LOGI(TAG, "FFT display stopped, original UI restored");
 }

@@ -17,6 +17,7 @@
 #include "settings.h"
 #include "lvgl_theme.h"
 #include "lvgl_display.h"
+#include "boards/common/esp32_music.h"
 
 #define TAG "MCP"
 
@@ -120,7 +121,69 @@ void McpServer::AddCommonTools() {
             });
     }
 #endif
+    auto music = board.GetMusic();
+    if (music)
+    {
+        AddTool("self.music.play_song",
+                "Plays the specified song. Use this tool when a user requests music playback; it will automatically retrieve song details and begin streaming.\n"
+                "Parameters:\n"
+                "  `id`: id: The id of the song to play (required).\n"
+                "Return:\n"
+                "  Playback status information.",
+                PropertyList({
+                    Property("song_id", kPropertyTypeString)
+                }),
+                [music](const PropertyList &properties) -> ReturnValue
+                {
+                    auto song_id = properties["song_id"].value<std::string>();
 
+                    if (!music->Download(song_id))
+                    {
+                        return "{\"success\": false, \"message\": \"获取音乐资源失败\"}";
+                    }
+                    auto download_result = music->GetDownloadResult();
+                    ESP_LOGI(TAG, "Music details result: %s", download_result.c_str());
+                    return "{\"success\": true, \"message\": \"音乐开始播放\"}";
+                });
+
+        AddTool("self.music.set_display_mode",
+                "Thiết lập chế độ hiển thị cho việc phát nhạc. Bạn có thể chọn hiển thị hiệu ứng spectrum hoặc lời bài hát. Ví dụ: nếu người dùng nói 'bật hiệu ứng âm thanh' hoặc 'spectrum', 'Mở lời bài hát' hoặc 'Hiển thị lời bài hát' sẽ thiết lập chế độ hiển thị tương ứng.\n"
+                "Tham số:\n"
+                "  `mode`: Chế độ hiển thị, với các giá trị có thể là hiệu ứng (spectrum) hoặc lời bài hát (lyrics) (mặc định hiển thị spectrum) \n"
+                "Trả về:\n"
+                "  Thông tin kết quả thiết lập.",
+                PropertyList({
+                    Property("mode", kPropertyTypeString) // Chế độ hiển thị: "spectrum" hoặc "lyrics"
+                }),
+                [music](const PropertyList &properties) -> ReturnValue
+                {
+                    auto mode_str = properties["mode"].value<std::string>();
+
+                    // 转换为小写以便比较
+                    std::transform(mode_str.begin(), mode_str.end(), mode_str.begin(), ::tolower);
+
+                    if (mode_str == "spectrum" || mode_str == "频谱")
+                    {
+                        // 设置为频谱显示模式
+                        auto esp32_music = static_cast<Esp32Music *>(music);
+                        esp32_music->SetDisplayMode(Esp32Music::DISPLAY_MODE_SPECTRUM);
+                        return "{\"success\": true, \"message\": \"Đã chuyển sang chế độ hiển thị spectrum\"}";
+                    }
+                    else if (mode_str == "lyrics" || mode_str == "歌词")
+                    {
+                        // 设置为歌词显示模式
+                        auto esp32_music = static_cast<Esp32Music *>(music);
+                        esp32_music->SetDisplayMode(Esp32Music::DISPLAY_MODE_LYRICS);
+                        return "{\"success\": true, \"message\": \"Đã chuyển sang chế độ hiển thị lời bài hát\"}";
+                    }
+                    else
+                    {
+                        return "{\"success\": false, \"message\": \"Chế độ hiển thị không hợp lệ, vui lòng sử dụng 'spectrum' hoặc 'lyrics'\"}";
+                    }
+
+                    return "{\"success\": false, \"message\": \"Không thể thiết lập chế độ hiển thị\"}";
+                });
+    }
     // Restore the original tools list to the end of the tools list
     tools_.insert(tools_.end(), original_tools.begin(), original_tools.end());
 }

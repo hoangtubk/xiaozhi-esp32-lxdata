@@ -36,6 +36,26 @@ protected:
     std::unique_ptr<LvglImage> preview_image_cached_ = nullptr;
     bool hide_subtitle_ = false;  // Control whether to hide chat messages/subtitles
 
+    // LVGL变量
+    lv_obj_t* canvas_ = nullptr;
+    uint16_t* canvas_buffer_ = nullptr;
+    void create_canvas();
+    uint16_t get_bar_color(int x_pos);
+    void draw_spectrum(float *power_spectrum,int fft_size);
+    void draw_bar(int x,int y,int bar_width,int bar_height,uint16_t color,int bar_index);
+    void draw_block(int x,int y,int block_x_size,int block_y_size,uint16_t color,int bar_index);
+    
+    int canvas_width_;
+    int canvas_height_;
+
+    // FFT 相关变量
+    int audio_display_last_update = 0;
+    std::atomic<bool> fft_task_should_stop = false;
+    TaskHandle_t fft_task_handle = nullptr;
+    bool fft_data_ready = false;
+    
+    virtual void stopFft() override;
+
     void InitializeLcdThemes();
     void SetupUI();
     virtual bool Lock(int timeout_ms = 0) override;
